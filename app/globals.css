@@ -1,0 +1,176 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --mars-red: #FF4500;
+  --mars-orange: #FF6B35;
+  --neon-blue: #00D4FF;
+  --neon-green: #00FF94;
+  --space-dark: #020308;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--space-dark);
+  color: #E8EDF2;
+  font-family: 'DM Sans', sans-serif;
+  overflow-x: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #020308; }
+::-webkit-scrollbar-thumb { background: #FF450044; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #FF4500; }
+
+/* Stars canvas */
+#stars-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Glitch effect */
+.glitch {
+  position: relative;
+}
+.glitch::before,
+.glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+}
+.glitch::before {
+  animation: glitch1 3s infinite;
+  color: #FF4500;
+  clip-path: polygon(0 0, 100% 0, 100% 35%, 0 35%);
+  transform: translate(-2px, -2px);
+}
+.glitch::after {
+  animation: glitch2 3s infinite;
+  color: #00D4FF;
+  clip-path: polygon(0 65%, 100% 65%, 100% 100%, 0 100%);
+  transform: translate(2px, 2px);
+}
+
+@keyframes glitch1 {
+  0%, 90%, 100% { transform: translate(-2px, -2px); opacity: 0; }
+  92% { transform: translate(-4px, 0); opacity: 0.8; }
+  94% { transform: translate(0px, -2px); opacity: 0; }
+  96% { transform: translate(-2px, 2px); opacity: 0.6; }
+}
+@keyframes glitch2 {
+  0%, 88%, 100% { transform: translate(2px, 2px); opacity: 0; }
+  90% { transform: translate(4px, 0); opacity: 0.7; }
+  93% { transform: translate(0, 2px); opacity: 0; }
+  96% { transform: translate(2px, -1px); opacity: 0.5; }
+}
+
+/* Scanline effect */
+.scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 212, 255, 0.015) 2px,
+    rgba(0, 212, 255, 0.015) 4px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Neon borders */
+.neon-border-mars {
+  border: 1px solid rgba(255, 69, 0, 0.3);
+  box-shadow: 0 0 10px rgba(255, 69, 0, 0.1), inset 0 0 10px rgba(255, 69, 0, 0.05);
+}
+.neon-border-blue {
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.1), inset 0 0 10px rgba(0, 212, 255, 0.05);
+}
+
+/* Data packet animation */
+@keyframes packet-fly {
+  0% { left: 0%; opacity: 0; transform: scale(0.5); }
+  10% { opacity: 1; transform: scale(1); }
+  90% { opacity: 1; transform: scale(1); }
+  100% { left: 100%; opacity: 0; transform: scale(0.5); }
+}
+
+.data-packet {
+  animation: packet-fly var(--duration, 3s) linear forwards;
+}
+
+/* Metric counter */
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Pulse ring */
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+.pulse-ring::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+/* Grid pattern background */
+.grid-bg {
+  background-image: 
+    linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Terminal cursor */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+.terminal-cursor::after {
+  content: '▋';
+  animation: blink 1s step-end infinite;
+  color: var(--neon-green);
+}
+
+/* Hover card effect */
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(255, 69, 0, 0.15);
+}
+
+/* Status indicator */
+@keyframes status-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 currentColor; }
+  50% { box-shadow: 0 0 0 6px transparent; }
+}
+.status-dot {
+  animation: status-pulse 2s ease-in-out infinite;
+}

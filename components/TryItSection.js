@@ -34,7 +34,6 @@ const SAMPLE_FILES = {
 function ResultCard({ result, mission }) {
   if (!result) return null
   const m = MISSIONS[mission]
-
   const statusConfig = {
     critical: { color: '#FF4500', label: 'SEND IMMEDIATELY', icon: '🔴' },
     sending: { color: '#FF6B35', label: 'SEND NOW', icon: '🟠' },
@@ -44,19 +43,27 @@ function ResultCard({ result, mission }) {
   const s = statusConfig[result.status] || statusConfig.pending
 
   return (
-    <div
-      className="rounded-xl p-5 border transition-all duration-500 mt-4"
-      style={{ borderColor: `${s.color}40`, backgroundColor: `${s.color}08` }}
-    >
+    <div className="rounded-xl p-5 border transition-all duration-500 mt-4"
+      style={{ borderColor: `${s.color}40`, backgroundColor: `${s.color}08` }}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <span className="text-xl">{s.icon}</span>
           <span className="font-mono font-bold text-lg" style={{ color: s.color }}>{s.label}</span>
         </div>
-        <span className="font-mono text-xs text-[#445566]">
-          confidence: {(result.rf_confidence * 100).toFixed(0)}%
-        </span>
+        <span className="font-mono text-xs text-[#445566]">confidence: {(result.rf_confidence * 100).toFixed(0)}%</span>
       </div>
+
+      {/* PDF preview */}
+      {result.extracted_text_preview && (
+        <div className="mb-4 p-3 rounded-lg bg-[#0A1628]/80 border border-[#1A2B3C]">
+          <p className="font-mono text-[9px] text-[#445566] uppercase tracking-wider mb-1">
+            Extracted text ({result.text_length} chars) · {result.filename}
+          </p>
+          <p className="font-mono text-[10px] text-[#6B7E8F] leading-relaxed">
+            {result.extracted_text_preview}...
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-3 mb-4">
         {[
@@ -66,12 +73,8 @@ function ResultCard({ result, mission }) {
         ].map((item, i) => (
           <div key={i} className="text-center p-3 rounded-lg bg-[#0A1628]/60">
             <div className="text-lg mb-1">{item.icon}</div>
-            <div
-              className="font-mono font-bold text-xl mb-1"
-              style={{ color: item.highlight ? m.color : '#445566' }}
-            >
-              {item.value}
-            </div>
+            <div className="font-mono font-bold text-xl mb-1"
+              style={{ color: item.highlight ? m.color : '#445566' }}>{item.value}</div>
             <div className="font-mono text-[9px] text-[#445566] uppercase">{item.label}</div>
           </div>
         ))}
@@ -92,6 +95,7 @@ function ResultCard({ result, mission }) {
 export default function TryItSection({ mission }) {
   const m = MISSIONS[mission]
   const samples = SAMPLE_FILES[mission] || SAMPLE_FILES.mars
+  const fileInputRef = useRef(null)
 
   const [selectedSample, setSelectedSample] = useState(null)
   const [customDesc, setCustomDesc] = useState('')
@@ -99,49 +103,65 @@ export default function TryItSection({ mission }) {
   const [customSize, setCustomSize] = useState(10)
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [mode, setMode] = useState('sample') // 'sample' | 'custom'
+  const [mode, setMode] = useState('sample') // 'sample' | 'custom' | 'pdf'
+  const [pdfFile, setPdfFile] = useState(null)
+  const [dragOver, setDragOver] = useState(false)
+
+  const handlePdfDrop = (e) => {
+    e.preventDefault()
+    setDragOver(false)
+    const f = e.dataTransfer.files[0]
+    if (f?.type === 'application/pdf') {
+      setPdfFile(f)
+      setResult(null)
+    }
+  }
 
   const analyze = async () => {
     setLoading(true)
     setResult(null)
 
-    const fileData = mode === 'sample' && selectedSample
-      ? {
-          name: selectedSample.name,
-          type: selectedSample.type,
-          size_mb: selectedSample.size,
-          description: selectedSample.desc,
-        }
-      : {
-          name: `CUSTOM_FILE_${Date.now()}.dat`,
-          type: customType,
-          size_mb: customSize,
-          description: customDesc || 'No description provided',
-        }
-
     try {
-      const res = await fetch(`${API_URL}/analyze`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          file: fileData,
-          mission: mission,
-        }),
-      })
-      const data = await res.json()
-      setResult(data)
+      if (mode === 'pdf') {
+        if (!pdfFile) return
+        const formData = new FormData()
+        formData.append('file', pdfFile)
+        formData.append('mission', mission)
+        const res = await fetch(`${API_URL}/analyze_pdf`, {
+          method: 'POST',
+          body: formData,
+        })
+        const data = await res.json()
+        setResult(data)
+      } else {
+        const fileData = mode === 'sample' && selectedSample
+          ? { name: selectedSample.name, type: selectedSample.type, size_mb: selectedSample.size, description: selectedSample.desc }
+          : { name: `CUSTOM_${Date.now()}.dat`, type: customType, size_mb: customSize, description: customDesc || 'No description' }
+
+        const res = await fetch(`${API_URL}/analyze`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ file: fileData, mission }),
+        })
+        const data = await res.json()
+        setResult(data)
+      }
     } catch (e) {
       setResult({ error: 'Analysis failed — check backend connection' })
     }
     setLoading(false)
   }
 
+  const canAnalyze = !loading && (
+    (mode === 'sample' && selectedSample) ||
+    (mode === 'custom' && customDesc) ||
+    (mode === 'pdf' && pdfFile)
+  )
+
   return (
     <section className="relative py-16 px-6">
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{ background: `radial-gradient(ellipse at 50% 50%, ${m.glowColor} 0%, transparent 70%)` }}
-      />
+      <div className="absolute inset-0 pointer-events-none"
+        style={{ background: `radial-gradient(ellipse at 50% 50%, ${m.glowColor} 0%, transparent 70%)` }} />
 
       <div className="relative max-w-6xl mx-auto">
         <div className="flex items-center gap-4 mb-10">
@@ -156,49 +176,47 @@ export default function TryItSection({ mission }) {
             Analyze any <span style={{ color: m.color }}>data file</span>
           </h2>
           <p className="text-[#6B7E8F] text-base max-w-xl mx-auto">
-            Submit a file to the AI pipeline — watch all 4 models decide its transmission priority in real time
+            Submit a file — or upload your own PDF — and watch all 4 models decide transmission priority in real time
           </p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Left: file selector */}
-          <div
-            className="rounded-xl p-6 border"
-            style={{ borderColor: `${m.color}20`, backgroundColor: '#050A14' }}
-          >
+          {/* Left panel */}
+          <div className="rounded-xl p-6 border" style={{ borderColor: `${m.color}20`, backgroundColor: '#050A14' }}>
+
             {/* Mode toggle */}
             <div className="flex gap-2 mb-6">
-              {['sample', 'custom'].map(md => (
-                <button
-                  key={md}
-                  onClick={() => { setMode(md); setResult(null) }}
-                  className="flex-1 py-2 font-mono text-xs uppercase tracking-widest rounded transition-all duration-300"
+              {[
+                { id: 'sample', label: '📁 Samples' },
+                { id: 'custom', label: '✏️ Custom' },
+                { id: 'pdf', label: '📄 Upload PDF' },
+              ].map(md => (
+                <button key={md.id}
+                  onClick={() => { setMode(md.id); setResult(null) }}
+                  className="flex-1 py-2 font-mono text-[10px] uppercase tracking-wider rounded transition-all duration-300"
                   style={{
-                    backgroundColor: mode === md ? `${m.color}20` : 'transparent',
-                    color: mode === md ? m.color : '#445566',
-                    border: `1px solid ${mode === md ? m.color + '40' : '#1A2B3C'}`,
-                  }}
-                >
-                  {md === 'sample' ? '📁 Sample Files' : '✏️ Custom Input'}
+                    backgroundColor: mode === md.id ? `${m.color}20` : 'transparent',
+                    color: mode === md.id ? m.color : '#445566',
+                    border: `1px solid ${mode === md.id ? m.color + '40' : '#1A2B3C'}`,
+                  }}>
+                  {md.label}
                 </button>
               ))}
             </div>
 
-            {mode === 'sample' ? (
+            {/* Sample mode */}
+            {mode === 'sample' && (
               <div className="space-y-2">
                 <p className="font-mono text-[10px] text-[#445566] uppercase tracking-wider mb-3">
                   Select a file from {m.name} mission:
                 </p>
                 {samples.map((f, i) => (
-                  <button
-                    key={i}
-                    onClick={() => { setSelectedSample(f); setResult(null) }}
+                  <button key={i} onClick={() => { setSelectedSample(f); setResult(null) }}
                     className="w-full text-left p-3 rounded-lg border transition-all duration-200"
                     style={{
                       borderColor: selectedSample?.name === f.name ? `${m.color}60` : '#1A2B3C',
                       backgroundColor: selectedSample?.name === f.name ? `${m.color}08` : 'transparent',
-                    }}
-                  >
+                    }}>
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-mono text-[10px] text-[#445566]">{f.type}</span>
                       <span className="font-mono text-[10px] text-[#2A3B4C]">{f.size} MB</span>
@@ -208,48 +226,34 @@ export default function TryItSection({ mission }) {
                   </button>
                 ))}
               </div>
-            ) : (
+            )}
+
+            {/* Custom mode */}
+            {mode === 'custom' && (
               <div className="space-y-4">
                 <div>
-                  <label className="font-mono text-[10px] text-[#445566] uppercase tracking-wider block mb-2">
-                    File Type
-                  </label>
-                  <select
-                    value={customType}
-                    onChange={e => setCustomType(e.target.value)}
+                  <label className="font-mono text-[10px] text-[#445566] uppercase tracking-wider block mb-2">File Type</label>
+                  <select value={customType} onChange={e => setCustomType(e.target.value)}
                     className="w-full bg-[#0A1628] border border-[#1A2B3C] rounded px-3 py-2 font-mono text-sm text-white focus:outline-none"
-                    style={{ borderColor: `${m.color}30` }}
-                  >
+                    style={{ borderColor: `${m.color}30` }}>
                     {m.fileTypes.map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="font-mono text-[10px] text-[#445566] uppercase tracking-wider block mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    value={customDesc}
-                    onChange={e => setCustomDesc(e.target.value)}
+                  <label className="font-mono text-[10px] text-[#445566] uppercase tracking-wider block mb-2">Description</label>
+                  <textarea value={customDesc} onChange={e => setCustomDesc(e.target.value)}
                     placeholder="Describe what this data contains..."
                     rows={4}
                     className="w-full bg-[#0A1628] border border-[#1A2B3C] rounded px-3 py-2 font-mono text-sm text-white placeholder-[#2A3B4C] focus:outline-none resize-none"
-                    style={{ borderColor: `${m.color}30` }}
-                  />
+                    style={{ borderColor: `${m.color}30` }} />
                 </div>
                 <div>
                   <label className="font-mono text-[10px] text-[#445566] uppercase tracking-wider block mb-2">
                     File Size: {customSize} MB
                   </label>
-                  <input
-                    type="range"
-                    min={0.1}
-                    max={100}
-                    step={0.1}
-                    value={customSize}
+                  <input type="range" min={0.1} max={100} step={0.1} value={customSize}
                     onChange={e => setCustomSize(parseFloat(e.target.value))}
-                    className="w-full accent-current"
-                    style={{ accentColor: m.color }}
-                  />
+                    className="w-full" style={{ accentColor: m.color }} />
                   <div className="flex justify-between font-mono text-[9px] text-[#2A3B4C] mt-1">
                     <span>0.1 MB</span><span>100 MB</span>
                   </div>
@@ -257,37 +261,81 @@ export default function TryItSection({ mission }) {
               </div>
             )}
 
-            <button
-              onClick={analyze}
-              disabled={loading || (mode === 'sample' && !selectedSample) || (mode === 'custom' && !customDesc)}
+            {/* PDF Upload mode */}
+            {mode === 'pdf' && (
+              <div className="space-y-4">
+                <p className="font-mono text-[10px] text-[#445566] uppercase tracking-wider">
+                  Upload any PDF — scientific paper, mission report, sensor log
+                </p>
+
+                {/* Drop zone */}
+                <div
+                  onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={handlePdfDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="relative cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-all duration-300"
+                  style={{
+                    borderColor: dragOver ? m.color : pdfFile ? `${m.color}60` : '#1A2B3C',
+                    backgroundColor: dragOver ? `${m.color}08` : pdfFile ? `${m.color}05` : 'transparent',
+                  }}>
+                  <input ref={fileInputRef} type="file" accept=".pdf" className="hidden"
+                    onChange={e => { if (e.target.files[0]) { setPdfFile(e.target.files[0]); setResult(null) } }} />
+
+                  {pdfFile ? (
+                    <div>
+                      <div className="text-3xl mb-2">📄</div>
+                      <p className="font-mono text-sm font-bold" style={{ color: m.color }}>{pdfFile.name}</p>
+                      <p className="font-mono text-[10px] text-[#445566] mt-1">
+                        {(pdfFile.size / 1024 / 1024).toFixed(2)} MB · Click to change
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="text-4xl mb-3">📄</div>
+                      <p className="font-mono text-sm text-[#445566]">Drop PDF here or click to browse</p>
+                      <p className="font-mono text-[10px] text-[#2A3B4C] mt-2">
+                        Scientific papers · Mission reports · Research docs
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Example PDFs hint */}
+                <div className="p-3 rounded-lg bg-[#0A1628]/60 border border-[#1A2B3C]">
+                  <p className="font-mono text-[9px] text-[#445566] uppercase tracking-wider mb-2">💡 Try these examples:</p>
+                  <div className="space-y-1">
+                    {[
+                      'NASA Mars 2020 Science Report (high priority)',
+                      'Any geology/astrobiology paper (medium-high)',
+                      'Equipment manual or routine log (low priority)',
+                    ].map((hint, i) => (
+                      <p key={i} className="font-mono text-[10px] text-[#2A3B4C]">→ {hint}</p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <button onClick={analyze} disabled={!canAnalyze}
               className="w-full mt-6 py-3 font-mono text-sm uppercase tracking-widest rounded transition-all duration-300 disabled:opacity-30"
-              style={{
-                backgroundColor: `${m.color}20`,
-                color: m.color,
-                border: `1px solid ${m.color}40`,
-              }}
-            >
-              {loading ? '⏳ Analyzing...' : '🚀 Run AI Analysis'}
+              style={{ backgroundColor: `${m.color}20`, color: m.color, border: `1px solid ${m.color}40` }}>
+              {loading ? '⏳ Analyzing...' : mode === 'pdf' ? '📄 Analyze PDF' : '🚀 Run AI Analysis'}
             </button>
           </div>
 
           {/* Right: result */}
-          <div
-            className="rounded-xl p-6 border"
-            style={{ borderColor: '#1A2B3C', backgroundColor: '#050A14' }}
-          >
-            <p className="font-mono text-[10px] text-[#445566] uppercase tracking-wider mb-4">
-              AI Pipeline Result
-            </p>
+          <div className="rounded-xl p-6 border" style={{ borderColor: '#1A2B3C', backgroundColor: '#050A14' }}>
+            <p className="font-mono text-[10px] text-[#445566] uppercase tracking-wider mb-4">AI Pipeline Result</p>
 
             {!result && !loading && (
               <div className="flex flex-col items-center justify-center h-64 text-center">
                 <div className="text-4xl mb-4">🤖</div>
                 <p className="font-mono text-sm text-[#2A3B4C]">
-                  Select a file and click<br />"Run AI Analysis"
+                  Select a file or upload PDF<br />and click "Run AI Analysis"
                 </p>
                 <p className="font-mono text-[10px] text-[#1A2B3C] mt-2">
-                  IsolationForest → Sentence Transformer<br />→ LinearRegression → RandomForest
+                  IsolationForest → Sentence Transformer<br />→ EMA Channel → RandomForest
                 </p>
               </div>
             )}
@@ -295,14 +343,17 @@ export default function TryItSection({ mission }) {
             {loading && (
               <div className="flex flex-col items-center justify-center h-64 text-center">
                 <div className="text-4xl mb-4 animate-spin">⚙️</div>
-                <p className="font-mono text-sm text-[#445566]">Running 4 models...</p>
+                <p className="font-mono text-sm text-[#445566]">
+                  {mode === 'pdf' ? 'Extracting text + running 4 models...' : 'Running 4 models...'}
+                </p>
                 <div className="mt-4 space-y-2 w-full max-w-xs">
-                  {['IsolationForest', 'Sentence Transformer', 'LinearRegression', 'RandomForest'].map((model, i) => (
+                  {(mode === 'pdf'
+                    ? ['Extracting PDF text', 'Sentence Transformer', 'IsolationForest', 'RandomForest']
+                    : ['IsolationForest', 'Sentence Transformer', 'EMA Channel Predictor', 'RandomForest']
+                  ).map((model, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <div
-                        className="w-2 h-2 rounded-full animate-pulse"
-                        style={{ backgroundColor: m.color, animationDelay: `${i * 0.3}s` }}
-                      />
+                      <div className="w-2 h-2 rounded-full animate-pulse"
+                        style={{ backgroundColor: m.color, animationDelay: `${i * 0.3}s` }} />
                       <span className="font-mono text-[10px] text-[#445566]">{model}</span>
                     </div>
                   ))}

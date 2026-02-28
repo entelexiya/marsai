@@ -18,13 +18,13 @@ export default function Home() {
       <StarsCanvas />
       <div className="relative z-10">
         <Navbar />
-        <Hero />
+        <Hero mission={mission} />
         <ProblemSection />
         <SolutionSection />
         <MissionSelector selected={mission} onChange={setMission} />
         <DemoSection mission={mission} />
         <TryItSection mission={mission} />
-        <TechSection />
+        <TechSection mission={mission} />
       </div>
     </main>
   )

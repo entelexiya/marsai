@@ -1,38 +1,164 @@
+# 🚀 MarsAI — AI-приоритизация данных для космических миссий
+
+<div align="center">
+
+**[🌐 Живое демо](https://marsai-six.vercel.app)** · **[🔧 API](https://entelexiya-marsai-backend.hf.space/docs)** · **[📄 Документация](./DOCUMENTATION.md)**
+
+<br/>
+
+*Rover collects 2 GB per day. Only 200 MB reaches Earth. MarsAI decides what matters.*
+
+</div>
+
 ---
-title: MarsAI Backend
-emoji: 🚀
-colorFrom: red
-colorTo: blue
-sdk: docker
-pinned: false
+
+## Что это
+
+Perseverance собирает около **2 ГБ данных каждый день** — изображения, химические спектры, атмосферные показания, сейсмические сигналы. На передачу есть **10–20 минут в сутки**. Это значит, что только ~10% данных когда-либо достигнет Земли.
+
+**MarsAI** — это автономная система на основе ИИ, которая решает, что передавать первым. Она анализирует каждый файл в очереди в реальном времени, используя каскад из 5 ML-моделей, и присваивает приоритет: `critical → sending → queued → pending`.
+
+Система работает **полностью автономно** — без обращений к внешним API, без облачного инференса. Это обязательное требование для глубокого космоса, где задержка сигнала составляет от 22 минут до 8 часов.
+
 ---
-# MarsAI Backend
 
-FastAPI backend with 5 ML models for onboard science selection.
+## Как это работает
 
-## https://marsai-six.vercel.app/
+```
+Файл в очереди
+      │
+      ├──► IsolationForest      → аномалия сенсоров? (обучен на реальных данных NASA MEDA)
+      │
+      ├──► Sentence Transformer → семантическая близость к открытиям (метан, биосигнатура...)
+      │
+      ├──► CLIP ViT-B/32        → научная ценность изображения
+      │
+      ├──► EMA + LinReg         → прогноз пропускной способности канала
+      │
+      └──► Random Forest        → финальный статус (15 признаков, точность ~92%)
+                (15 features)
+```
 
-## API Endpoints
+Каждая модель добавляет слой интеллекта. Random Forest принимает финальное решение, учитывая все предыдущие оценки плюс текущее состояние канала.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /status | System health + stats |
-| GET | /files | Current file queue |
-| POST | /tick | Run one simulation cycle |
-| POST | /reset | Reset simulation |
-| GET | /mars-delay | Current Earth-Mars delay |
-| POST | /mars-delay | Set delay manually |
-| GET | /channel/history | Bandwidth history for charts |
+---
 
-## Models
+## Возможности
 
-1. **IsolationForest** — anomaly detection in sensor readings
-2. **Sentence Transformer (MiniLM)** — semantic value of file descriptions  
-3. **LinearRegression** — channel bandwidth prediction
-4. **RandomForest** — final send/queue/drop decision (trained on 8000 samples)
-5. **CLIP Vision** — Image analysis 
+- **5 ML-моделей** в каскадном конвейере
+- **4 профиля миссий** — Mars, LEO Satellite, Lunar, Deep Space — каждый с уникальной физикой и политикой передачи
+- **Реальные данные NASA** — IsolationForest обучен на телеметрии MEDA Perseverance (sols 1–847, PDS Archive)
+- **Объяснимые решения** — каждый статус трассируется к конкретным признакам
+- **Живое демо** — симуляция обновляется каждые 3 секунды
 
-This project demonstrates a concept aligned with NASA's onboard autonomy research — an AI system that acts as a scientist aboard a Mars rover, prioritizing scientific data transmission under real bandwidth constraints.
-=======
-# marsai
->>>>>>> fea7d0c9b679715b978419bed19b7bd3706ba006
+---
+
+## Стек технологий
+
+| Слой | Технологии |
+|------|-----------|
+| Frontend | Next.js 14, Tailwind CSS, Canvas API |
+| Backend | FastAPI, Python 3.10 |
+| ML | scikit-learn, sentence-transformers, CLIP (OpenAI) |
+| Данные | NASA PDS Open Archive (Perseverance MEDA, sols 1–847) |
+| Deploy | Vercel (frontend) · HuggingFace Spaces (backend, 16 GB RAM) |
+
+---
+
+## Быстрый старт
+
+### Backend
+
+```bash
+git clone https://github.com/[org]/marsai-backend
+cd marsai-backend
+pip install -r requirements.txt
+
+# Обучить IsolationForest на данных NASA
+python nasa_data_trainer.py
+
+# Запустить сервер
+uvicorn main:app --reload --port 8000
+```
+
+### Frontend
+
+```bash
+git clone https://github.com/[org]/marsai
+cd marsai
+npm install
+echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
+npm run dev
+```
+
+Открыть [http://localhost:3000](http://localhost:3000)
+
+---
+
+## Структура проекта
+
+```
+marsai-backend/
+├── main.py                   # FastAPI, все эндпоинты
+├── decision_engine.py        # 5 ML-моделей (533 строки)
+├── mission_configs.py        # Конфиги миссий, семантические референсы
+├── satellite_files.py        # Генератор файлов для симуляции
+├── channel_simulator.py      # Симуляция канала связи
+├── nasa_data_trainer.py      # Обучение IsolationForest
+└── nasa_isolation_forest.pkl # Обученная модель
+
+marsai/ (frontend)
+├── app/page.js               # Корневая страница
+└── components/
+    ├── Hero.js               # Canvas-анимация
+    ├── DemoSection.js        # Живая симуляция очереди
+    ├── TryItSection.js       # Анализ файлов, PDF, NASA фото
+    └── MissionSelector.js    # Переключатель миссий
+```
+
+---
+
+## Метрики модели
+
+Random Forest обучен на 10 000 синтетических примерах (85/15 split):
+
+| Метрика | Значение |
+|---------|---------|
+| Accuracy | ~92% |
+| Precision | ~91% |
+| Recall | ~90% |
+| F1 Score | ~91% |
+
+Актуальные метрики всегда доступны на [`/metrics`](https://entelexiya-marsai-backend.hf.space/metrics).
+
+---
+
+## Миссии
+
+| Миссия | Задержка | Скорость | Данные/день | Политика |
+|--------|---------|---------|-------------|---------|
+| 🔴 Mars | 3–22 мин | 0.5–6 Mbps | ~2 ГБ | critical + queued |
+| 🛰 LEO Sat | ~20 мс | 10–150 Mbps | ~50 ГБ | все статусы |
+| 🌙 Lunar | 1.3 сек | 1–20 Mbps | ~500 МБ | все статусы |
+| 🚀 Deep Space | 1–8 ч | 0.001–0.08 Mbps | ~10 МБ | только critical |
+
+---
+
+## Команда
+
+Түркістан, Қазақстан · **AEROO Space AI Competition 2024**
+
+| | Имя | Роль |
+|-|-----|------|
+| 🟠 | Нұрахмет Ілесбай | ML-инженер — конвейер, IsolationForest, RandomForest |
+| 🟡 | Бұйрабай Нұрсезім | Капитан — данные NASA, датасеты |
+| 🔵 | Қыдырбек Жания | Frontend — Next.js, Canvas, Vercel |
+| 🟣 | Құралбек Дәулет | Research — документация, датасеты |
+
+---
+
+<div align="center">
+
+Made with ❤️ and real NASA data · [marsai-six.vercel.app](https://marsai-six.vercel.app)
+
+</div>

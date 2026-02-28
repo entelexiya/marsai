@@ -1,49 +1,36 @@
-<<<<<<< HEAD
-# MarsAI — Onboard Science Selection
+---
+title: MarsAI Backend
+emoji: 🚀
+colorFrom: red
+colorTo: blue
+sdk: docker
+pinned: false
+---
+# MarsAI Backend
 
-> AI-powered adaptive data transmission from Mars rovers to Earth
+FastAPI backend with 5 ML models for onboard science selection.
 
-## 🚀 Quick Start
+## https://marsai-six.vercel.app/
 
-```bash
-npm install
-npm run dev
-```
+## API Endpoints
 
-Open [http://localhost:3000](http://localhost:3000)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /status | System health + stats |
+| GET | /files | Current file queue |
+| POST | /tick | Run one simulation cycle |
+| POST | /reset | Reset simulation |
+| GET | /mars-delay | Current Earth-Mars delay |
+| POST | /mars-delay | Set delay manually |
+| GET | /channel/history | Bandwidth history for charts |
 
-## 📦 Deploy to Vercel
+## Models
 
-```bash
-npm install -g vercel
-vercel
-```
-
-## 🌍 Environment Variables
-
-Create `.env.local`:
-
-```
-NEXT_PUBLIC_API_URL=https://your-railway-backend.up.railway.app
-```
-
-## 🧠 Tech Stack
-
-**Frontend:** Next.js 14, Tailwind CSS, Canvas API, Vercel
-
-**Backend (separate repo):** FastAPI, scikit-learn, sentence-transformers, Railway
-
-## 📡 Backend API Endpoints
-
-```
-GET  /status       — System health
-GET  /files        — Current file queue
-POST /tick         — Process one transmission cycle
-POST /reset        — Reset simulation
-GET  /mars-delay   — Current Earth-Mars delay
-```
-
-## 🏆 AEROO Space AI Competition
+1. **IsolationForest** — anomaly detection in sensor readings
+2. **Sentence Transformer (MiniLM)** — semantic value of file descriptions  
+3. **LinearRegression** — channel bandwidth prediction
+4. **RandomForest** — final send/queue/drop decision (trained on 8000 samples)
+5. **CLIP Vision** — Image analysis 
 
 This project demonstrates a concept aligned with NASA's onboard autonomy research — an AI system that acts as a scientist aboard a Mars rover, prioritizing scientific data transmission under real bandwidth constraints.
 =======

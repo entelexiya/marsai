@@ -66,36 +66,36 @@ The system uses a **cascade of 5 machine learning models**, each adding a layer 
 │                        CLIENT LAYER                                 │
 │                  Next.js 14  (Vercel CDN)                           │
 │                                                                     │
-│  ┌──────────────┐  ┌──────────────────┐  ┌──────────────────────┐  │
-│  │   Hero.js    │  │  DemoSection.js  │  │   TryItSection.js    │  │
-│  │  Canvas API  │  │  Live queue sim  │  │  File analysis UI    │  │
-│  │  Starfield   │  │  Auto-tick loop  │  │  PDF upload / CLIP   │  │
-│  └──────────────┘  └──────────────────┘  └──────────────────────┘  │
+│  ┌──────────────┐  ┌──────────────────┐  ┌──────────────────────┐   │
+│  │   Hero.js    │  │  DemoSection.js  │  │   TryItSection.js    │   │
+│  │  Canvas API  │  │  Live queue sim  │  │  File analysis UI    │   │
+│  │  Starfield   │  │  Auto-tick loop  │  │  PDF upload / CLIP   │   │
+│  └──────────────┘  └──────────────────┘  └──────────────────────┘   │
 └────────────────────────────┬────────────────────────────────────────┘
                              │  REST (JSON)
                              ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        API LAYER                                    │
-│              FastAPI  (HuggingFace Spaces, 2 CPU / 16 GB)          │
+│              FastAPI  (HuggingFace Spaces, 2 CPU / 16 GB)           │
 │                                                                     │
-│  /tick ──► decision_engine.py ──► 5 ML models ──► queue update     │
+│  /tick ──► decision_engine.py ──► 5 ML models ──► queue update      │
 │  /analyze ──► single file scoring                                   │
-│  /analyze_pdf ──► PyMuPDF extract ──► Sentence Transformer         │
-│  /nasa_image ──► NASA APOD API ──► CLIP scoring                    │
-│  /channel/history ──► EMA + LinReg history                         │
+│  /analyze_pdf ──► PyMuPDF extract ──► Sentence Transformer          │
+│  /nasa_image ──► NASA APOD API ──► CLIP scoring                     │
+│  /channel/history ──► EMA + LinReg history                          │
 └────────────────────────────┬────────────────────────────────────────┘
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │                       ML MODEL LAYER                                │
 │                                                                     │
-│  IsolationForest  │  Sentence Transformer  │  CLIP ViT-B/32        │
-│  (nasa_isolation  │  (all-MiniLM-L6-v2,   │  (~290 MB,            │
-│   _forest.pkl)    │   lazy-loaded)         │   lazy-loaded)        │
+│  IsolationForest  │  Sentence Transformer  │  CLIP ViT-B/32         │
+│  (nasa_isolation  │  (all-MiniLM-L6-v2,    │  (~290 MB,             │
+│   _forest.pkl)    │   lazy-loaded)         │   lazy-loaded)         │
 │                   │                        │                        │
 │  EMA + LinReg Channel Predictor            │                        │
 │                   │                        │                        │
-│  RandomForestClassifier (10k samples, 15 features)                 │
+│  RandomForestClassifier (10k samples, 15 features)                  │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 

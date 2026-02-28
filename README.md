@@ -70,7 +70,7 @@ Perseverance собирает около **2 ГБ данных каждый де
 ### Backend
 
 ```bash
-git clone https://github.com/[org]/marsai-backend
+git clone https://github.com/entelexiya/marsai-backend
 cd marsai-backend
 pip install -r requirements.txt
 

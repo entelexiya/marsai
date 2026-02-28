@@ -847,7 +847,7 @@ uvicorn main:app --reload --port 8000
 
 ```bash
 # Clone
-git clone https://github.com/[org]/marsai
+git clone https://github.com/entelexiya/marsai
 cd marsai
 
 # Install dependencies
